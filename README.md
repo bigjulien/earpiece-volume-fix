@@ -115,7 +115,7 @@ Provided as-is, without any warranty. Tested and confirmed working on a Fairphon
 
 No particular restrictions—do whatever you want with it.
 
-# FP4 Earpiece Volume Fix
+# [FRANCAIS] FP4 Earpiece Volume Fix
 
 Module Magisk qui corrige le volume trop faible de l'oreillette en appel sur
 **Fairphone 4** sous **/e/OS** (testé sur /e/OS 4.1, plateforme Qualcomm
