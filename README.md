@@ -2,20 +2,20 @@
 
 A Magisk module that fixes the excessively low in-call earpiece volume on the **Fairphone 4** running **/e/OS** (tested on /e/OS 4.1, Qualcomm "Lagoon" / SM6350 platform).
 
-## The problem
+## The Problem
 
-On the FP4 running /e/OS, the in-call earpiece volume for regular phone calls (GSM/VoLTE, not VoIP/WhatsApp) is extremely low, even at maximum volume, making conversations difficult to hear in moderately noisy environments. This is a known issue that remains unresolved on the /e/OS side:
+On the FP4 running /e/OS, the earpiece volume during regular phone calls (GSM/VoLTE, not VoIP/WhatsApp) is extremely low, even at maximum volume, making conversations difficult to hear in moderately noisy environments. This is a known issue on /e/OS that remains unresolved:
 
-* [Forum /e/OS — FP4 low volume at phone calls](https://community.e.foundation/t/fp4-low-volume-at-phone-calls-speaker-not-loud-speaker/81579)
-* [Forum /e/OS — Speaker too quiet during calls](https://community.e.foundation/t/speaker-too-quiet-during-calls/79088)
-* [GitLab e Foundation — issue #2](https://gitlab.e.foundation/e/devices/FP4/android_hardware_qcom_audio/-/issues/2)
-* [GitLab e Foundation — backlog #9185](https://gitlab.e.foundation/e/backlog/-/work_items/9185)
+* [/e/OS Forum — FP4 low volume at phone calls](https://community.e.foundation/t/fp4-low-volume-at-phone-calls-speaker-not-loud-speaker/81579)
+* [/e/OS Forum — Speaker too quiet during calls](https://community.e.foundation/t/speaker-too-quiet-during-calls/79088)
+* [e Foundation GitLab — issue #2](https://gitlab.e.foundation/e/devices/FP4/android_hardware_qcom_audio/-/issues/2)
+* [e Foundation GitLab — backlog #9185](https://gitlab.e.foundation/e/backlog/-/work_items/9185)
 
-Since the developers have not been able to reproduce the issue internally, it remains open. This module provides a user-side workaround without waiting for an official fix.
+Since the developers have not been able to reproduce the bug internally, the issue remains open. This module provides a user-side workaround without waiting for an official fix.
 
-## Technical background
+## Technical Background
 
-On this SoC, the earpiece amplifier is **not** a simple headphone amplifier with a fixed gain defined in `mixer_paths.xml`. Instead, the Fairphone 4 reuses the external **aw882xx** smart amplifier (normally dedicated to the main loudspeaker), switched into `Rcv` mode for the earpiece:
+On this SoC, the earpiece amplifier is **not** a simple headset amplifier with a fixed gain defined in `mixer_paths.xml`. Instead, the Fairphone 4 reuses the external **aw882xx** smart amplifier (normally dedicated to the main loudspeaker), switched into `Rcv` mode for earpiece operation:
 
 ```xml
 <path name="handset">
@@ -25,24 +25,24 @@ On this SoC, the earpiece amplifier is **not** a simple headphone amplifier with
 </path>
 ```
 
-The actual amplifier gain in `Rcv` mode is controlled by a dynamic ALSA register that is **not present in the static XML file**, making it impossible to modify through a conventional `mixer_paths.xml` patch:
+The actual amplifier gain in `Rcv` mode is controlled through a dynamic ALSA register, **not present in the static XML file**, and therefore cannot be modified through a conventional `mixer_paths.xml` patch:
 
 * `numid=2175` — `aw882xx_mode_switch_l` (0 = Spk, 1 = Rcv, 2 = Voice)
-* `numid=2181` — `aw882xx_rx_volume_l` (range 0–255, **lower values = higher volume**; the scale is inverted compared to a conventional dB gain)
+* `numid=2181` — `aw882xx_rx_volume_l` (range 0–255, **lower value = louder volume**; the scale works in reverse compared to a traditional dB gain control)
 
-This register is also **reset by the driver every time a new call starts** (observed default value: `80`). Therefore, applying the setting only once at boot is not sufficient—it must be reapplied for every phone call.
+This register is also **reset by the driver whenever a new call starts** (observed default value: `80`). Therefore, applying the setting once at boot is not sufficient; it must be reapplied for every call.
 
-## How the module works
+## How the Module Works
 
-`service.sh` starts a background loop (launched by Magisk during boot) that, once every second:
+`service.sh` starts a background monitoring loop (launched by Magisk at boot) that runs once per second:
 
 1. Reads `aw882xx_mode_switch_l` (numid 2175).
 2. If the value is `1` (earpiece active), forces `aw882xx_rx_volume_l` (numid 2181) to the target value defined in `target_value.txt`.
-3. Does nothing outside of this mode (speakerphone, music playback, etc. remain untouched—only the `_l` channel used by the earpiece is affected).
+3. Does nothing outside of earpiece mode (speakerphone, media playback, etc. remain untouched — only the `_l` channel used by the earpiece is affected).
 
 ## Dependency
 
-The module relies on the `amixer` binary from the **alsa-utils** package, installed through **Termux**. /e/OS 4.1 on the FP4 does not provide either `tinymix` or `amixer` natively.
+The module relies on the `amixer` binary from the **alsa-utils** package installed through **Termux**, since /e/OS 4.1 on the FP4 provides neither `tinymix` nor `amixer` natively.
 
 ```bash
 pkg install alsa-utils
@@ -56,16 +56,16 @@ The script searches for `amixer` in the following locations, in order:
 /vendor/bin/amixer
 ```
 
-⚠️ If Termux or the `alsa-utils` package is removed, the workaround quietly stops working (nothing breaks—it simply becomes inactive). Reinstalling them is enough to reactivate the module; no need to reinstall the module itself.
+⚠️ If Termux or the `alsa-utils` package is removed, the fix simply becomes inactive without causing any issues. Reinstalling them is sufficient to reactivate the module; reinstalling the module itself is not required.
 
 ## Installation
 
-1. Install Termux (from F-Droid, **not** the Play Store), then run:
+1. Install Termux (from F-Droid, not the Play Store), then run:
 
    ```bash
    pkg update && pkg install alsa-utils
    ```
-2. In Magisk, go to **Modules → Install from storage**.
+2. Open Magisk → Modules → Install from storage.
 3. Select the module ZIP file.
 4. Reboot.
 
@@ -80,7 +80,7 @@ echo 10 > /data/adb/modules/earpiece_volume_fix/target_value.txt
 
 Default value: `20`.
 
-No distortion was observed during testing, even at `0` (maximum volume), but hearing sensitivity varies from person to person—adjust the value according to your own comfort.
+No audible distortion was observed during testing, even at `0` (maximum volume), but hearing sensitivity varies from person to person—adjust the value to your own comfort level.
 
 ## Verification / Logs
 
@@ -89,33 +89,33 @@ su
 cat /data/adb/modules/earpiece_volume_fix/log.txt
 ```
 
-The log should contain a line similar to:
+You should see a line similar to:
 
-```
+```text
 Rcv mode detected, applying gain=20
 ```
 
-each time a phone call is answered.
+each time a call is initiated.
 
-## Known limitations
+## Known Limitations
 
-* This module is calibrated specifically for this SoC and this exact version of /e/OS. A system update may change the ALSA `numid` values. If the workaround stops working after an update, verify them again with:
+* Calibrated specifically for this SoC and this version of /e/OS. A system update may change the ALSA `numid` values. If the fix stops working after an update, verify them with:
 
   ```bash
   amixer -c 0 controls | grep aw882xx
   ```
-* The `_r` (right) channel is not used by the earpiece audio path on this device and is therefore left untouched.
-* The monitoring loop runs once per second, resulting in a slight battery impact (one `amixer` process per second while idle, two during a phone call), which has been found to be negligible during normal use.
+* The `_r` (right) channel is not used by the earpiece audio path on this device and is therefore not modified.
+* The monitoring loop runs once per second, resulting in a small battery impact (one `amixer` process invocation per second while idle, two during a call), considered negligible under normal usage.
 
 ## Disclaimer
 
-Provided as-is, without any warranty. Tested and confirmed working on a Fairphone 4 running /e/OS 4.1, but ALSA registers on an audio chipset may vary between hardware revisions or firmware versions. Verify the module's behavior on your own device before relying on it for daily use.
+Provided as-is, without warranty. Tested and confirmed working on a Fairphone 4 running /e/OS 4.1, but ALSA registers on audio chips may vary between hardware revisions and firmware versions. Always verify the behavior on your own device before relying on it for everyday use.
 
 ## License
 
-No particular restrictions—do whatever you want with it.
+No particular restrictions — use it however you like.
 
-# [FRANCAIS] FP4 Earpiece Volume Fix
+# FP4 Earpiece Volume Fix - Français 
 
 Module Magisk qui corrige le volume trop faible de l'oreillette en appel sur
 **Fairphone 4** sous **/e/OS** (testé sur /e/OS 4.1, plateforme Qualcomm
@@ -259,4 +259,3 @@ quotidien.
 ## Licence
 
 Aucune restriction particulière — faites-en ce que vous voulez.
-
