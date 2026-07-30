@@ -1,6 +1,6 @@
 id=earpiece_volume_fix
 name=FP4 Earpiece Volume Fix
-version=v2.0
-versionCode=2
+version=v2.1
+versionCode=3
 author=julien
 description=Force le gain de l'oreillette (registre aw882xx_rx_volume_l) a une valeur plus forte pendant les appels vocaux. Version evenementielle (alsactl monitor) au lieu d'une boucle de polling, pour un impact batterie minimal. Necessite Termux + le paquet alsa-utils installes (fournit amixer et alsactl utilises par le script). Valeur par defaut modifiable dans /data/adb/modules/earpiece_volume_fix/target_value.txt. Cible: Fairphone 4, plateforme Lagoon (SM6350), /e/OS 4.1.

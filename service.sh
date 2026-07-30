@@ -114,6 +114,22 @@ apply_if_needed() {
     fi
 }
 
+# A la reception d'un evenement, le basculement reel en mode Rcv peut
+# survenir avec un leger decalage par rapport a l'evenement qui nous
+# reveille (surtout observe sur les appels entrants). On fait donc une
+# petite rafale de verifications espacees plutot qu'une seule, pour ne
+# pas rater la fenetre. Reste tres econome : ne se declenche que dans
+# les ~2s suivant un vrai evenement audio, jamais en continu.
+burst_check() {
+    apply_if_needed
+    sleep 0.3
+    apply_if_needed
+    sleep 0.5
+    apply_if_needed
+    sleep 1
+    apply_if_needed
+}
+
 (
     # Verification initiale au cas ou le service demarre pendant un appel deja actif
     apply_if_needed
@@ -122,7 +138,7 @@ apply_if_needed() {
     # quelconque (carte occupee, redemarrage audio HAL...), on le relance.
     while true; do
         "$ALSACTL" monitor "hw:$CARD" 2>>"$LOG" | while read -r _line; do
-            apply_if_needed
+            burst_check &
         done
         log "alsactl monitor s'est arrete, relance dans 5s"
         sleep 5
